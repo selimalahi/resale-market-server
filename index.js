@@ -24,6 +24,8 @@ async function run() {
       .collection("categoriesData");
     const products = client.db("resalesPortal").collection("products");
 
+    const bookingsCollection = client.db("resalesPortal").collection("booking");
+
     app.get("/categoriesData", async (req, res) => {
       const query = {};
       const datas = await categoriesDataCollection.find(query).toArray();
@@ -44,28 +46,16 @@ async function run() {
         res.send(product);
       });
 
-    // app.get("/product/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: ObjectId(id) };
-    //   const product = await products.findOne(query);
+    // bookink collection
+     
+    app.post('/bookings', async(req, res) =>{
+        const booking =req.body
+        console.log(booking);
+        const result =await bookingsCollection.insertOne(booking);
+        res.send(result);
+    })
+    
 
-    //   res.send(product);
-    // });
-
-
-    // app.get("/category/:id", async (req, res) => {
-    //   const id = req.params.id;
-
-    //     const result=await products.filter(n=>n.category_id === id);
-    //     res.send(result);
-    // });
-    //  app.get('/product/category_id/:id', async(req, res) =>{
-    //     const id =req.params.id;
-    //     const query ={category_id:id}
-    //     const result = await products.find(query);
-    //     console.log(result);
-    //     res.send(result);
-    //  })
   } finally {
   }
 }
