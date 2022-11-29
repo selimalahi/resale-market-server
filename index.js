@@ -23,6 +23,7 @@ const client = new MongoClient(uri, {
 function verifyJWT(req, res, next) {
 
     const authHeader = req.headers.authorization;
+    console.log(authHeader, 'authheader');
     if (!authHeader) {
         return res.status(401).send('unauthorized access');
     }
@@ -30,6 +31,7 @@ function verifyJWT(req, res, next) {
     const token = authHeader.split(' ')[1];
 
     jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        console.log(err);
         if (err) {
             return res.status(403).send({ message: 'forbidden access' })
         }
@@ -120,6 +122,33 @@ async function run() {
         const result = await usersCollection.insertOne(user);
         res.send(result);
     });
+
+    // make admin seller
+
+    app.put('/users/admin/:id', verifyJWT, async (req, res) =>{
+
+        const decodedEmail = req.decoded.email;
+        const query = { email: decodedEmail };
+        const user = await usersCollection.findOne(query);
+        console.log(user);
+
+        if (user?.role !== 'admin') {
+            return res.status(403).send({ message: 'forbidden access' })
+        }
+
+        const id =req.params.id;
+        const filter = { _id: ObjectId(id) }
+        const options = {upsert: true };
+        const updateDoc ={
+            $set: {
+                role: 'admin',
+                
+            }
+        }  
+
+        const result = await usersCollection.updateOne(filter, updateDoc, options );
+        res.send(result);
+    })
     
 
   } finally {
