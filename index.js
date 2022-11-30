@@ -3,6 +3,8 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const stripe = require("stripe")('STRIPE_SECRET');
+
 const port = process.env.PORT || 5000;
 
 const app = express();
@@ -45,6 +47,7 @@ async function run() {
     const products = client.db("resalesPortal").collection("products");
     const bookingsCollection = client.db("resalesPortal").collection("booking");
     const usersCollection = client.db("resalesPortal").collection("users");
+    const paymentsCollection = client.db("resalesPortal").collection("payment");
 
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.decoded.email;
@@ -52,6 +55,32 @@ async function run() {
       const user = await usersCollection.findOne(query);
 
       if (user?.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+       
+    // verifyBuyer
+
+    const verifyBuyer = async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const query = { email: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.role !== "buyer") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+     
+    //   veryfy Seller
+
+    const verifySeller= async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const query = { email: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.role !== "seller") {
         return res.status(403).send({ message: "forbidden access" });
       }
       next();
@@ -84,6 +113,25 @@ async function run() {
       const booking = await bookingsCollection.findOne(query);
       res.send(booking);
     });
+
+
+    // payment colection 
+
+    app.post('/payments', async (req, res) =>{
+      const payment = req.body;
+      const result = await paymentsCollection.insertOne(payment);
+      const id = payment.bookingId
+      const filter = {_id: ObjectId(id)}
+      const updatedDoc = {
+          $set: {
+              paid: true,
+              transactionId: payment.transactionId
+          }
+      }
+      const updatedResult = await bookingsCollection.updateOne(filter, updatedDoc)
+      res.send(result);
+  })
+
 
     // booking collection
 
@@ -173,12 +221,13 @@ async function run() {
 
     app.get("/users/buyer/:email", async (req, res) => {
       const email = req.params.email;
-      const query = { email };
+      const query = { email };      
       const user = await usersCollection.findOne(query);
+      // console.log({ isBuyer: user?.role === "buyer" })
       res.send({ isBuyer: user?.role === "buyer" });
     });
 
-    // make admin seller
+    // make admin 
 
     app.put("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
@@ -198,6 +247,25 @@ async function run() {
       res.send(result);
     });
 
+    // make seller
+    app.put("/users/buyer/:id", verifyJWT, verifyBuyer, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          role: "buyer",
+        },
+      };
+
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
     // delete user
 
     app.delete("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
@@ -206,6 +274,26 @@ async function run() {
       const result = await usersCollection.deleteOne(filter);
       res.send(result);
     });
+
+    // payment
+    app.post('/create-payment-intent', async (req, res) => {
+      const booking = req.body;
+      const price = booking.price;
+      const amount = price * 100;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+          currency: 'usd',
+          amount: amount,
+          "payment_method_types": [
+              "card"
+          ]
+      });
+      res.send({
+          clientSecret: paymentIntent.client_secret,
+      });
+  });
+ 
+
   } finally {
   }
 }
