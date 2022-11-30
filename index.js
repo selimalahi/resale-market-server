@@ -209,7 +209,7 @@ async function run() {
       res.send(result);
     });
 
-    // admin check
+    // admin check ?
     app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
@@ -255,7 +255,7 @@ async function run() {
       const updateDoc = {
         $set: {
           role: "buyer",
-        },
+        },f
       };
 
       const result = await usersCollection.updateOne(
