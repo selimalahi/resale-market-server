@@ -92,12 +92,12 @@ async function run() {
       res.send(datas);
     });
 
-    app.get("/", async (req, res) => {
-      const query = {};
-      const cursor = products.find(query);
-      const services = await cursor.toArray();
-      res.send(services);
-    });
+    // app.get("/", async (req, res) => {
+    //   const query = {};
+    //   const cursor = products.find(query);
+    //   const services = await cursor.toArray();
+    //   res.send(services);
+    // });
 
     app.get("/product/:id", async (req, res) => {
       const id = req.params.id;
@@ -105,6 +105,14 @@ async function run() {
       const product = await products.find(query).toArray();
       res.send(product);
     });
+
+    // add a product
+
+    app.get('/addproducts', async (req, res) => {
+      const query = {}
+      const result = await products.find(query).project({ category_name: 1 }).toArray();
+      res.send(result);
+  })
 
     //  payment method get single id
     app.get("/bookings/:id", async (req, res) => {
@@ -227,6 +235,16 @@ async function run() {
       res.send({ isBuyer: user?.role === "buyer" });
     });
 
+    // seller check
+
+    app.get("/users/seller/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };      
+      const user = await usersCollection.findOne(query);
+      // console.log({ isBuyer: user?.role === "seller" })
+      res.send({ isSeller: user?.role === "seller" });
+    });
+
     // make admin 
 
     app.put("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
@@ -248,27 +266,36 @@ async function run() {
     });
 
     // make seller
-    app.put("/users/buyer/:id", verifyJWT, verifyBuyer, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: ObjectId(id) };
-      const options = { upsert: true };
-      const updateDoc = {
-        $set: {
-          role: "buyer",
-        },f
-      };
+    // app.put("/users/buyer/:id", verifyJWT, verifyBuyer, async (req, res) => {
+    //   const id = req.params.id;
+    //   const filter = { _id: ObjectId(id) };
+    //   const options = { upsert: true };
+    //   const updateDoc = {
+    //     $set: {
+    //       role: "buyer",
+    //     },f
+    //   };
 
-      const result = await usersCollection.updateOne(
-        filter,
-        updateDoc,
-        options
-      );
-      res.send(result);
-    });
+    //   const result = await usersCollection.updateOne(
+    //     filter,
+    //     updateDoc,
+    //     options
+    //   );
+    //   res.send(result);
+    // });
 
     // delete user
 
     app.delete("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await usersCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    // delete seller 
+
+    app.delete("/seller/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const result = await usersCollection.deleteOne(filter);
